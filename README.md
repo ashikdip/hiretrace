@@ -204,3 +204,75 @@ Built in Turku, Finland — where the EU AI Act compliance deadline is not hypot
 ## License
 
 MIT — use freely, adapt for your context.
+
+---
+
+## Screenshots
+
+### Dashboard
+![Dashboard](screenshots/dashboard.png)
+
+The main compliance overview for the current period. At a glance you see **total decisions logged**, **flagged decisions** (those with detected bias risk), **escalations pending HR review**, and an **audit readiness percentage**. Each stat card is clickable — Total decisions goes to the Audit Log, Escalations goes to the Escalation Queue.
+
+The right panel shows two things: a **Bias breakdown** chart listing which bias types have been detected and how many times, and an **Escalation queue preview** showing the top pending items with their bias flags. The bottom section is the **EU AI Act compliance checklist** — four live-status items tracking whether logging is active, bias analysis is on file, escalations are resolved, and the audit report has been generated.
+
+---
+
+### Log Decision
+![Log Decision](screenshots/log-decision.png)
+
+The structured form for logging a single rejection. It captures four things required for EU AI Act compliance:
+
+- **Candidate details** — ATS reference ID (no personal names stored), role, hiring stage, and decision date
+- **AI system involvement** — a toggle that reveals fields for the AI system name, its recommendation, and whether the hiring manager overrode it (the primary audit risk under Annex III)
+- **Rejection reason** — multi-select chips covering the most common rejection categories
+- **Justification** — a free-text field where the hiring manager writes their reasoning in their own words
+
+As the manager types the justification, the **Bias analysis panel** at the bottom fires automatically (powered by the Claude API). It scans the text for bias indicators — language that proxies for protected characteristics — and returns a risk score from 0–100 with labelled flags. Decisions scoring above 60 are automatically routed to the escalation queue.
+
+---
+
+### Audit Log
+![Audit Log](screenshots/audit-log.png)
+
+A searchable, filterable table of every logged decision. Columns show candidate ID, role, rejection reason, whether an AI tool was involved, the bias risk score, and the current status (Clear / Flagged / In Review).
+
+Clicking any row expands it to reveal the full justification text, all detected bias indicators, the hiring stage, who logged the decision, and any AI override note. From the expanded row you can **edit the record**, **view it in the escalation queue**, or **export it as a standalone PDF** — a print-formatted compliance record that opens in a new tab ready to save.
+
+The top-right buttons export the full log as **CSV** or navigate to the **Generate Report** screen.
+
+---
+
+### Escalation Queue
+![Escalation Queue](screenshots/escalation-queue.png)
+
+All flagged and in-review decisions collected in one place for HR review. Each card shows the **risk score badge** (red for high risk, amber for medium), the candidate ID, role, stage, date, and the specific bias flags that triggered escalation.
+
+Clicking a card expands the full review workflow: the original justification text, the Claude bias analysis detail, and four **reviewer decision chips** (Justified / Partially justified / Not justified / Escalate to legal). The reviewer can add notes that get appended to the audit record, then resolve the case or escalate it to the legal team via a confirmation modal.
+
+Unresolved escalations block the audit report from being marked complete — this is intentional, reflecting the Article 14 requirement for human oversight before decisions are finalised.
+
+---
+
+### Generate Report
+![Generate Report](screenshots/report-generation.png)
+
+The audit report screen with a **live preview** that updates as you change the settings. Configuration fields: date range (from / to), company name, responsible officer, and whether to include all decisions or flagged-only.
+
+A live summary bar shows how many decisions match the current filter — clear, flagged, and unresolved counts update in real time. If there are unresolved escalations, a warning banner appears with a direct link to resolve them first.
+
+The preview renders the full report structure: black cover block with company and period metadata, decision summary stats, **EU AI Act compliance mapping** (Art. 13, 14, 26, and Ann. III each marked Met or Partial), bias flag summary, and an officer declaration with signature fields.
+
+The **Download PDF** button opens a print-formatted version of the full report in a new tab — the browser print dialog lets you save it as a PDF. The report includes a complete decision audit log table, flagged decision detail cards with justification text, and the signed declaration.
+
+---
+
+### Import CSV
+![Import CSV](screenshots/import-csv.png)
+
+A 4-step wizard for batch importing rejection decisions exported from an ATS:
+
+1. **Upload file** — accepts a CSV export from any ATS (Teamtailor, Recruitee, Workable, etc.)
+2. **Map columns** — match the ATS column names to HireTrace fields; required fields are marked
+3. **Run analysis** — Claude API processes all rejection notes in batch, scanning each one for bias indicators; a progress bar tracks the analysis row by row
+4. **Review & import** — results show how many decisions came back clear vs. flagged, with a preview of the first few rows and their status; flagged decisions go directly to the escalation queue on import
