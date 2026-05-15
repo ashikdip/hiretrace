@@ -1,5 +1,101 @@
 import { useState, useEffect, useRef } from "react";
 
+// ── PDF Utilities ──────────────────────────────────────────────
+const generateIndividualRecordPDF = (d, reviewerDecision = "", reviewerNotes = "") => {
+  const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  const statusColor = d.status === "flagged" ? "#C9372C" : d.status === "review" ? "#D97706" : "#1D9E75";
+  const statusLabel = d.status === "flagged" ? "Flagged" : d.status === "review" ? "In review" : "Clear";
+  const biasRows = d.biasFlags.length > 0
+    ? d.biasFlags.map(f => `<tr><td style="padding:6px 10px;border-bottom:1px solid #eee;font-size:12px;color:#C9372C;">⚠ ${f}</td></tr>`).join("")
+    : `<tr><td style="padding:6px 10px;font-size:12px;color:#1D9E75;">✓ No bias indicators detected</td></tr>`;
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>HireTrace Decision Record ${d.id}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Geist', sans-serif; color: #111110; background: #fff; padding: 0; }
+  .cover { background: #111110; color: #fff; padding: 32px 40px 28px; }
+  .cover-label { font-size: 11px; opacity: 0.4; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 12px; }
+  .cover-title { font-size: 22px; font-weight: 500; margin-bottom: 6px; }
+  .cover-meta { font-size: 11px; opacity: 0.5; font-family: 'Geist Mono', monospace; }
+  .body { padding: 32px 40px; }
+  .section { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid #E2E1DC; }
+  .section:last-child { border-bottom: none; margin-bottom: 0; }
+  .section-label { font-size: 9px; font-weight: 600; color: #A8A8A4; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .field-label { font-size: 10px; color: #A8A8A4; margin-bottom: 4px; }
+  .field-value { font-size: 13px; color: #111110; }
+  .mono { font-family: 'Geist Mono', monospace; }
+  .justification { background: #F5F4F1; border-left: 2px solid #C9372C; padding: 10px 14px; border-radius: 0 6px 6px 0; font-size: 13px; color: #6B6B67; line-height: 1.6; font-style: italic; }
+  .reviewer-box { background: #F5F4F1; border-radius: 8px; padding: 14px 16px; font-size: 13px; color: #6B6B67; line-height: 1.6; }
+  .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+  .sig-box { border: 1px solid #E2E1DC; border-radius: 8px; padding: 14px 16px; }
+  .sig-label { font-size: 10px; color: #A8A8A4; margin-bottom: 10px; }
+  .sig-line { border-bottom: 1px solid #E2E1DC; height: 32px; margin-bottom: 8px; }
+  .sig-name { font-size: 12px; color: #6B6B67; }
+  .status-badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 500; background: ${d.status === "flagged" ? "#FFECEB" : d.status === "review" ? "#FFF8E6" : "#E1F5EE"}; color: ${statusColor}; }
+  .footer { margin-top: 32px; padding-top: 14px; border-top: 1px solid #E2E1DC; font-size: 10px; color: #A8A8A4; font-family: 'Geist Mono', monospace; display: flex; justify-content: space-between; }
+  table { width: 100%; border-collapse: collapse; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head><body>
+<div class="cover">
+  <div class="cover-label">HireTrace · Individual Decision Record</div>
+  <div class="cover-title">${d.role} · ${d.id}</div>
+  <div class="cover-meta">${d.stage} · ${d.date} · Logged by ${d.loggedBy} · Generated: ${today}</div>
+</div>
+<div class="body">
+  <div class="section">
+    <div class="section-label">Decision details</div>
+    <div class="grid2">
+      <div><div class="field-label">Candidate ID</div><div class="field-value mono">${d.id}</div></div>
+      <div><div class="field-label">Role</div><div class="field-value">${d.role}</div></div>
+      <div><div class="field-label">Hiring stage</div><div class="field-value">${d.stage}</div></div>
+      <div><div class="field-label">Decision date</div><div class="field-value">${d.date}</div></div>
+      <div><div class="field-label">Primary reason</div><div class="field-value">${d.reason}</div></div>
+      <div><div class="field-label">Status</div><div class="field-value"><span class="status-badge">${statusLabel}</span></div></div>
+      <div><div class="field-label">AI system used</div><div class="field-value">${d.ai ? (d.aiSystem || "Yes") : "No"}</div></div>
+      <div><div class="field-label">Risk score</div><div class="field-value" style="color:${statusColor};font-weight:500;">${d.riskScore} / 100</div></div>
+      ${d.override ? `<div style="grid-column:1/-1"><div class="field-label">AI override</div><div class="field-value" style="color:#C9372C;">Yes — manager rejected despite AI advance recommendation</div></div>` : ""}
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-label">Rejection justification</div>
+    <div class="justification">${d.justification}</div>
+  </div>
+  <div class="section">
+    <div class="section-label">Bias analysis (Claude API)</div>
+    <table><tbody>${biasRows}</tbody></table>
+  </div>
+  ${reviewerDecision || reviewerNotes ? `
+  <div class="section">
+    <div class="section-label">HR reviewer decision</div>
+    ${reviewerDecision ? `<div class="reviewer-box" style="margin-bottom:10px;"><strong>${reviewerDecision}</strong></div>` : ""}
+    ${reviewerNotes ? `<div class="reviewer-box">${reviewerNotes}</div>` : ""}
+  </div>` : ""}
+  <div class="section">
+    <div class="section-label">Officer declaration</div>
+    <div style="font-size:12px;color:#6B6B67;line-height:1.7;margin-bottom:16px;">I confirm that this hiring decision was conducted in accordance with applicable EU AI Act obligations and Finnish non-discrimination law (Yhdenvertaisuuslaki 1325/2014). All bias indicators have been reviewed. This record forms part of the organisation's audit trail under Article 13 and Annex III.</div>
+    <div class="sig-grid">
+      <div class="sig-box"><div class="sig-label">HR responsible officer</div><div class="sig-line"></div><div class="sig-name">Mia Virtanen, HR Manager · Acme Oy</div></div>
+      <div class="sig-box"><div class="sig-label">Date signed</div><div class="sig-line"></div><div class="sig-name">${today}</div></div>
+    </div>
+  </div>
+  <div class="footer"><span>HireTrace v1.0 · Confidential compliance record</span><span>Ref: ${d.id} · ${today}</span></div>
+</div>
+<script>window.onload = () => { window.print(); }</script>
+</body></html>`;
+
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `HireTrace_Record_${d.id}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
 // ── Design tokens ──────────────────────────────────────────────
 const T = {
   black: "#111110",
@@ -552,7 +648,7 @@ function AuditLog({ decisions, setActive }) {
                 <div style={{ display: "flex", gap: 8, marginTop: 12, paddingTop: 12, borderTop: `0.5px solid ${T.border}` }}>
                   <Btn style={{ fontSize: 12, padding: "5px 10px" }}>✎ Edit</Btn>
                   {d.status !== "clear" && <Btn style={{ fontSize: 12, padding: "5px 10px", color: T.red, borderColor: T.red }}>→ View in queue</Btn>}
-                  <Btn style={{ fontSize: 12, padding: "5px 10px" }}>↓ Export record</Btn>
+                  <Btn onClick={() => generateIndividualRecordPDF(d)} style={{ fontSize: 12, padding: "5px 10px" }}>↓ Download record</Btn>
                 </div>
               </div>
             )}
@@ -658,7 +754,7 @@ function EscalationQueue({ decisions, onResolve }) {
                     placeholder="Add reviewer notes — appended to the audit record..."
                     style={{ width: "100%", padding: "9px 12px", border: `0.5px solid ${T.border}`, borderRadius: 7, fontSize: 13, fontFamily: "'Geist', sans-serif", minHeight: 70, resize: "vertical", outline: "none", lineHeight: 1.6, marginBottom: 12 }} />
                   <div style={{ display: "flex", gap: 9 }}>
-                    <Btn success onClick={() => handleResolve(d.id)}>✓ Resolve and close</Btn>
+                    <Btn success onClick={() => { handleResolve(d.id); generateIndividualRecordPDF(d, chips[d.id] || "", notes[d.id] || ""); }}>✓ Resolve and download record</Btn>
                     <Btn style={{ color: T.red, borderColor: T.red }}>⚖ Escalate to legal</Btn>
                   </div>
                 </div>
@@ -829,6 +925,24 @@ function GenerateReport({ decisions }) {
       `<tr><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:11px;font-family:monospace;background:#f5f4f1;white-space:nowrap;">${a.ref}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;color:#6B6B67;">${a.text}</td><td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:11px;font-weight:600;color:${a.color};white-space:nowrap;">${a.status === "Met" ? "✓" : "⚠"} ${a.status}</td></tr>`
     ).join("");
 
+    const decisionRows = decisions.map((d, i) => {
+      const statusColor = d.status === "clear" ? "#1D9E75" : d.status === "flagged" ? "#C9372C" : "#D97706";
+      const statusLabel = d.status === "clear" ? "✓ Clear" : d.status === "flagged" ? "⚠ Flagged" : "↻ Review";
+      const biasCell = d.biasFlags.length > 0 ? d.biasFlags.join(", ") : "None";
+      const rowBg = i % 2 === 0 ? "#ffffff" : "#fafaf9";
+      return `<tr style="background:${rowBg};">
+        <td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:11px;font-family:monospace;color:#6B6B67;">${d.id}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;">${d.role}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;color:#6B6B67;">${d.stage}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;color:#6B6B67;">${d.reason}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:11px;text-align:center;">${d.ai ? "Yes" : "No"}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:11px;font-weight:600;color:${statusColor};">${statusLabel}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:11px;color:#C9372C;">${biasCell}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:11px;color:#6B6B67;">${d.loggedBy}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #eee;font-size:11px;color:#6B6B67;">${d.date}</td>
+      </tr>`;
+    }).join("");
+
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
 <title>HireTrace Audit Report</title>
 <style>
@@ -879,6 +993,25 @@ function GenerateReport({ decisions }) {
   <div class="section">
     <div class="section-label">Bias flag summary</div>
     <table><tbody>${biasLines}</tbody></table>
+  </div>
+  <div class="section">
+    <div class="section-label">Individual rejection decisions</div>
+    <table>
+      <thead>
+        <tr style="background:#F5F4F1;">
+          <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#A8A8A4;text-align:left;text-transform:uppercase;letter-spacing:0.05em;border-bottom:2px solid #E2E1DC;">ID</th>
+          <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#A8A8A4;text-align:left;text-transform:uppercase;letter-spacing:0.05em;border-bottom:2px solid #E2E1DC;">Role</th>
+          <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#A8A8A4;text-align:left;text-transform:uppercase;letter-spacing:0.05em;border-bottom:2px solid #E2E1DC;">Stage</th>
+          <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#A8A8A4;text-align:left;text-transform:uppercase;letter-spacing:0.05em;border-bottom:2px solid #E2E1DC;">Reason</th>
+          <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#A8A8A4;text-align:center;text-transform:uppercase;letter-spacing:0.05em;border-bottom:2px solid #E2E1DC;">AI</th>
+          <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#A8A8A4;text-align:left;text-transform:uppercase;letter-spacing:0.05em;border-bottom:2px solid #E2E1DC;">Status</th>
+          <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#A8A8A4;text-align:left;text-transform:uppercase;letter-spacing:0.05em;border-bottom:2px solid #E2E1DC;">Bias flags</th>
+          <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#A8A8A4;text-align:left;text-transform:uppercase;letter-spacing:0.05em;border-bottom:2px solid #E2E1DC;">Logged by</th>
+          <th style="padding:8px 10px;font-size:10px;font-weight:600;color:#A8A8A4;text-align:left;text-transform:uppercase;letter-spacing:0.05em;border-bottom:2px solid #E2E1DC;">Date</th>
+        </tr>
+      </thead>
+      <tbody>${decisionRows}</tbody>
+    </table>
   </div>
   <div class="section">
     <div class="section-label">Officer declaration</div>

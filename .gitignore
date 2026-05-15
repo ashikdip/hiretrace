@@ -1,1 +1,8 @@
+node_modules/
+HireTrace_final.jsx
+hiretrace_prototype.html
+Prototype Visuals/
+Version Control/
+*.pptx
 .DS_Store
+dist/
