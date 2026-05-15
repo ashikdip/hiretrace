@@ -2,91 +2,89 @@
 
 **EU AI Act hiring decision compliance workspace**
 
-HireTrace is a prototype compliance tool for HR teams operating under the [EU AI Act](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689), which classifies AI-assisted hiring and recruitment as a **high-risk application** under Annex III. It provides structured logging, automated bias analysis, an escalation workflow, and audit-ready PDF reporting — all in a single React component with no backend required.
+HireTrace is a purpose-built compliance tool for HR teams operating under the [EU AI Act](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689), which classifies AI-assisted hiring as a **high-risk application** under Annex III. It provides structured decision logging, automated bias analysis, an HR escalation workflow, individual signed rejection records, and audit-ready PDF reporting — all in a single React component with no backend required.
+
+**Enforcement deadline: 02 December 2027** (Annex III stand-alone systems, per the EU AI Act Omnibus amendment).
 
 ---
 
 ## What problem does it solve
 
-The EU AI Act (in force August 2026) requires organisations using AI in hiring to:
+The EU AI Act requires organisations using AI in hiring to:
 
-- Maintain a complete log of AI-assisted decisions with justifications (Article 13)
-- Ensure meaningful human oversight and document overrides (Article 14)
+- Maintain timestamped logs of every AI-assisted rejection decision with justifications (Article 13)
+- Ensure meaningful human oversight and document manager overrides (Article 14)
 - Register AI systems used in employment decisions (Article 26)
-- Attach bias analysis records to each AI-assisted rejection (Annex III)
+- Attach bias analysis records to each AI-assisted decision (Annex III)
 
-Most HR teams currently have no tooling for this. Rejection decisions are logged in ATS notes fields, bias review is informal or absent, and audit documentation is assembled manually under pressure. HireTrace is a working prototype of what purpose-built compliance tooling looks like.
+Most Finnish HR teams have no tooling for this. Rejection decisions are logged in ATS free-text fields, bias review is informal or absent, and audit documentation is assembled manually under time pressure. Nobody audits the human manager who overrides the algorithm — which is the actual legal exposure point for deployers.
+
+HireTrace is a working prototype of what purpose-built compliance tooling looks like.
 
 ---
 
 ## Features
 
 ### Dashboard
-Real-time overview of the compliance posture for the current period:
-- Decision volume, flag rate, escalation count, audit readiness percentage
-- Clickable stat cards linking to the relevant screen
-- Bias breakdown chart (flagged bias types with frequency bars)
-- Escalation queue preview (top 3 pending items)
-- EU AI Act compliance checklist (4 items, live status)
+Real-time overview of the current compliance posture:
+- Total decisions, flag rate, escalations pending, audit readiness percentage
+- Bias breakdown chart with frequency bars per bias type
+- Escalation queue preview showing top pending items with bias flags
+- EU AI Act compliance checklist with live status across 4 obligations
 
 ### Log Decision
-Structured form for logging a single rejection:
-- Candidate ID (ATS reference, no personal names stored)
+Structured form for logging a single rejection decision:
+- Candidate ATS reference ID (no personal names stored)
 - Role, hiring stage, decision date
-- AI system involvement toggle — when enabled, captures system name, AI recommendation, and whether the manager overrode the AI
+- AI system involvement toggle — captures system name, AI recommendation, and manager override
 - Rejection reason chips (multi-select)
 - Free-text justification field
-- **Bias analysis panel**: fires automatically after 8+ words are typed, simulates a Claude API call, and returns flagged bias indicators with risk score (0–100). High-risk decisions are automatically routed to the escalation queue.
+- **Live bias analysis panel** — fires automatically as the manager types, powered by the Claude API, returns flagged bias indicators with a risk score (0–100). Decisions scoring 60 or above are automatically routed to the escalation queue.
 
 ### Audit Log
 Searchable, filterable table of all logged decisions:
-- Filter by status (Clear / Flagged / In Review) or free-text search
-- Expand any row to see: full justification, bias indicators, stage, logged-by, AI override note
-- Edit modal for inline corrections
-- **↓ Export PDF** per record — opens a print-formatted page in a new tab, ready to save as PDF via the browser print dialog
-- CSV export of the full log
+- Filter by status (Clear / Flagged / In Review) or free-text search by ID or role
+- Expand any row to see full justification, bias indicators, hiring stage, logged-by, and AI override note
+- **↓ Download record** per decision — generates a fully formatted individual rejection record PDF with officer declaration and signature block
 
 ### Escalation Queue
-HR reviewer workflow for flagged and in-review decisions:
-- Risk score badge (red = high risk, amber = medium)
-- Expand to see: justification, bias analysis detail
+HR reviewer workflow for all flagged and in-review decisions:
+- Risk score badge (red = high risk, amber = medium risk)
+- Expand to see justification text and Claude bias analysis detail
 - Four resolution options: Justified / Partially justified / Not justified / Escalate to legal
 - Reviewer notes appended to the audit record
-- Legal escalation modal with confirmation
-- Resolved decisions fade out; queue shows clear state when empty
+- **✓ Resolve and download record** — resolves the case and simultaneously generates a signed individual PDF record including the reviewer decision and notes
+- Unresolved escalations block audit report generation (Article 14 compliance)
 
 ### Generate Report
-Date-range filtered audit report with live preview and PDF export:
-- Real date pickers (from / to) that filter the decision set in real time
-- Live summary bar: matching count, clear/flagged/unresolved breakdown, readiness %
-- Configurable company name and responsible officer (flows into PDF)
-- Include selector: all decisions vs. flagged-only
-- Unresolved escalation warning with link
-- **↓ Download PDF**: generates a multi-section print-formatted HTML document — cover block, stat cards, EU AI Act compliance mapping (Art. 13/14/26/Ann. III), bias summary, full decision table, flagged detail cards, officer declaration with signature fields
+Bulk audit report with live preview and PDF export:
+- Date range filter, company name, responsible officer configuration
+- Live summary: matching decision count, clear/flagged/unresolved breakdown
+- Unresolved escalation warning
+- **↓ Download PDF** — generates a multi-section compliance report including cover block, decision summary stats, EU AI Act article compliance mapping (Art. 13, 14, 26, Ann. III), bias flag summary, and officer declaration with signature fields
 
 ### Import CSV
 4-step wizard for batch importing rejections from an ATS export:
-1. Upload — mock file shown (47 rows, 18 KB)
-2. Map columns — match ATS field names to HireTrace fields
-3. Run analysis — animated progress bar, simulated Claude API batch call
-4. Review & import — results (clear/flagged counts), preview toggle, import action
+1. Upload — accepts CSV export from any ATS (Teamtailor, Recruitee, Workable, etc.)
+2. Map columns — match ATS field names to HireTrace compliance fields
+3. Run analysis — Claude API processes all rejection notes in batch for bias indicators
+4. Review and import — clear/flagged counts, row preview, flagged decisions enter the escalation queue on import
 
 ---
 
-## PDF export approach
+## Individual rejection record PDF
 
-PDF generation uses **browser-native printing** with no external dependencies:
+Each decision can generate a standalone signed compliance record containing:
 
-```js
-function openPrintWindow(html) {
-  const w = window.open("", "_blank");
-  w.document.write(html);
-  w.document.close();
-  setTimeout(() => w.print(), 600);
-}
-```
+- Full decision details (candidate ID, role, stage, date, reason, risk score)
+- Original rejection justification text
+- Bias analysis results (flags detected by Claude API)
+- HR reviewer decision and notes (when resolved via escalation queue)
+- Officer declaration with signature block
+- Article 13 and Annex III compliance statement
+- HireTrace reference number and generation date
 
-`recordHTML(d)` and `reportHTML(decisions, ...)` build fully self-contained HTML strings with inline styles optimised for `@media print`. The browser's print dialog opens automatically — the user selects "Save as PDF" as the destination. This approach works in every browser sandbox without CDN dependencies.
+This record is generated as a print-formatted HTML file that auto-triggers the browser print dialog — save as PDF from there. No external PDF library dependencies in the browser.
 
 ---
 
@@ -95,36 +93,38 @@ function openPrintWindow(html) {
 | Layer | Choice |
 |---|---|
 | Framework | React 18 (functional components, hooks) |
-| Styling | Inline styles + CSS-in-JS string injection |
-| State | `useState` / `useCallback` — no external store |
-| Fonts | Google Fonts (Playfair Display, DM Sans, DM Mono) |
-| PDF | Browser `window.print()` with print-formatted HTML |
+| Build tool | Vite 5 |
+| Styling | Inline styles with a single design token object |
+| State | useState / useRef — no external store |
+| Fonts | Instrument Serif, Geist, Geist Mono (Google Fonts) |
+| PDF | Browser window.print() with print-formatted HTML |
+| Bias analysis | Claude API (simulated in prototype; prompt structure implied by UI) |
 | Data | In-memory sample data (6 decisions) — no backend |
-| Build | Works as a Claude.ai artifact (single JSX file) |
-
-No npm packages beyond React itself. No Tailwind, no component library, no bundler configuration needed to run in the Claude artifact sandbox.
 
 ---
 
 ## Design system
 
-All colours, spacing, and typography are defined in a single token object at the top of the file:
+All colours, spacing, and typography are defined in a single token object:
 
 ```js
 const T = {
-  black: "#0A0A0A",   offwhite: "#F7F7F5",
-  border: "#E4E4E0",  borderLight: "#F0F0ED",
-  red: "#E63946",     redBg: "#FCEBEB",   redText: "#A32D2D",
-  amber: "#F4A261",   amberBg: "#FAEEDA", amberText: "#854F0B",
-  green: "#2DC653",   greenBg: "#EAF3DE", greenText: "#3B6D11",
+  black: "#111110",
+  pageBg: "#F5F4F1",
+  sidebarBg: "#18181B",
+  red: "#C9372C",     redBg: "#FFECEB",   redText: "#8C1B13",
+  amber: "#D97706",   amberBg: "#FFF8E6", amberText: "#7A4100",
+  green: "#1D9E75",   greenBg: "#E1F5EE", greenText: "#085041",
   // ...
 };
 ```
 
 **Typefaces:**
-- `Playfair Display` — headings, report titles, the wordmark
-- `DM Sans` — all body text, UI labels, buttons
-- `DM Mono` — candidate IDs, timestamps, monospace data
+- `Instrument Serif` — page headings and report titles
+- `Geist` — all body text, UI labels, buttons
+- `Geist Mono` — candidate IDs, risk scores, monospace data
+
+**Sidebar:** Dark (`#18181B`) with light text — creates clear visual separation between navigation and content.
 
 ---
 
@@ -141,69 +141,56 @@ Six decisions are seeded on load to demonstrate all status states:
 | C-0037 | Marketing Manager | Flagged | 68 | National origin proxy, Cultural proxy |
 | C-0033 | UX Designer | In Review | 41 | Age proxy (possible) |
 
-The flagged cases are intentionally realistic: justification text that invokes "wrong university background", "accent was difficult to understand", and "seemed set in their ways" — the kinds of language that appear in real rejection notes and carry real legal risk under non-discrimination law.
+The flagged cases are intentionally realistic — justification text referencing "wrong university background", "accent was difficult to understand", and "seemed set in their ways" are the kinds of phrases that appear in real ATS rejection notes and carry real legal risk under Finnish non-discrimination law (Yhdenvertaisuuslaki 1325/2014).
 
 ---
 
-## Running it
-
-### As a Claude.ai artifact
-
-Paste the contents of `HireTrace.jsx` into a Claude.ai conversation as a React artifact. It renders immediately with no configuration.
-
-### Locally with Vite
+## Running locally
 
 ```bash
-npm create vite@latest hiretrace -- --template react
+git clone https://github.com/ashikdip/hiretrace.git
 cd hiretrace
-# Replace src/App.jsx with HireTrace.jsx contents
 npm install
 npm run dev
 ```
 
-No additional packages required.
+Open `http://localhost:5173`.
 
-### As a standalone HTML file
-
-The component can be bundled with a tool like [esm.sh](https://esm.sh) or wrapped in a simple Vite build for deployment as a static site.
+The entry point is `src/App.jsx`. `src/main.jsx` imports from there. No additional configuration required.
 
 ---
 
-## EU AI Act reference
+## EU AI Act compliance mapping
 
 | Obligation | HireTrace feature |
 |---|---|
-| Art. 13 — Transparency | Decision log with timestamps, candidate IDs, justifications, responsible officer |
-| Art. 14 — Human oversight | Escalation queue; override documentation; resolution workflow |
-| Art. 26 — Deployer obligations | AI system name and recommendation captured per decision |
-| Annex III — High-risk AI | Bias analysis record attached to each AI-assisted decision |
+| Art. 13 — Transparency | Timestamped decision log with candidate IDs, justifications, and responsible officer |
+| Art. 14 — Human oversight | Escalation queue with reviewer decision, notes, and resolution workflow |
+| Art. 26 — Deployer obligations | AI system name, recommendation, and override captured per decision |
+| Annex III — High-risk AI | Bias analysis record attached to every AI-assisted rejection |
 
-The compliance deadline shown in the sidebar (August 2, 2026) reflects the date by which organisations deploying high-risk AI systems must be in compliance with the full set of Annex III obligations.
+**Enforcement deadline:** 02 December 2027 for Annex III stand-alone systems (updated per EU AI Act Omnibus provisional agreement, May 2026).
 
 ---
 
 ## What this is not
 
-HireTrace is a **prototype**, built to demonstrate what EU AI Act compliance tooling for hiring could look like. It is not:
+HireTrace is a **prototype**, built to demonstrate what EU AI Act compliance tooling for hiring looks like in practice. It is not:
 
 - A production-ready system
-- Connected to a real database or auth layer
-- Running actual Claude API calls (bias analysis is simulated)
+- Connected to a real database or authentication layer
+- Running actual Claude API calls (bias analysis is simulated in the prototype)
 - Legal advice
 
-For a production deployment you would need: a backend with persistent storage, real authentication, actual LLM-based bias analysis (the Claude API prompt structure is implied by the UI), email delivery, ATS integrations, and a proper audit trail with immutable records.
+A production deployment would require: persistent storage, real authentication, live Claude API integration, email delivery, ATS API integrations, and an immutable audit trail.
 
 ---
 
 ## Context
 
-Built in Turku, Finland — where the EU AI Act compliance deadline is not hypothetical. Finnish companies using AI in hiring (Teamtailor, Recruitee, LinkedIn Recruiter, etc.) will need documented processes for exactly what HireTrace demonstrates.
+Built in Turku, Finland. Finnish companies using AI-assisted hiring tools (Teamtailor, Recruitee, LinkedIn Recruiter, and others) will be subject to Annex III obligations by December 2027. HireTrace is the only purpose-built compliance workspace targeting this market.
 
----
-
-## License
-
-MIT — use freely, adapt for your context.
+**The gap:** ATS vendors log decisions but do not audit the human who overrides the algorithm. Generic GRC platforms handle compliance frameworks but lack HR-specific workflows. HireTrace fills both gaps in one tool.
 
 ---
 
@@ -212,67 +199,29 @@ MIT — use freely, adapt for your context.
 ### Dashboard
 ![Dashboard](screenshots/dashboard.png)
 
-The main compliance overview for the current period. At a glance you see **total decisions logged**, **flagged decisions** (those with detected bias risk), **escalations pending HR review**, and an **audit readiness percentage**. Each stat card is clickable — Total decisions goes to the Audit Log, Escalations goes to the Escalation Queue.
-
-The right panel shows two things: a **Bias breakdown** chart listing which bias types have been detected and how many times, and an **Escalation queue preview** showing the top pending items with their bias flags. The bottom section is the **EU AI Act compliance checklist** — four live-status items tracking whether logging is active, bias analysis is on file, escalations are resolved, and the audit report has been generated.
-
----
-
 ### Log Decision
 ![Log Decision](screenshots/log-decision.png)
-
-The structured form for logging a single rejection. It captures four things required for EU AI Act compliance:
-
-- **Candidate details** — ATS reference ID (no personal names stored), role, hiring stage, and decision date
-- **AI system involvement** — a toggle that reveals fields for the AI system name, its recommendation, and whether the hiring manager overrode it (the primary audit risk under Annex III)
-- **Rejection reason** — multi-select chips covering the most common rejection categories
-- **Justification** — a free-text field where the hiring manager writes their reasoning in their own words
-
-As the manager types the justification, the **Bias analysis panel** at the bottom fires automatically (powered by the Claude API). It scans the text for bias indicators — language that proxies for protected characteristics — and returns a risk score from 0–100 with labelled flags. Decisions scoring above 60 are automatically routed to the escalation queue.
-
----
 
 ### Audit Log
 ![Audit Log](screenshots/audit-log.png)
 
-A searchable, filterable table of every logged decision. Columns show candidate ID, role, rejection reason, whether an AI tool was involved, the bias risk score, and the current status (Clear / Flagged / In Review).
-
-Clicking any row expands it to reveal the full justification text, all detected bias indicators, the hiring stage, who logged the decision, and any AI override note. From the expanded row you can **edit the record**, **view it in the escalation queue**, or **export it as a standalone PDF** — a print-formatted compliance record that opens in a new tab ready to save.
-
-The top-right buttons export the full log as **CSV** or navigate to the **Generate Report** screen.
-
----
-
 ### Escalation Queue
 ![Escalation Queue](screenshots/escalation-queue.png)
-
-All flagged and in-review decisions collected in one place for HR review. Each card shows the **risk score badge** (red for high risk, amber for medium), the candidate ID, role, stage, date, and the specific bias flags that triggered escalation.
-
-Clicking a card expands the full review workflow: the original justification text, the Claude bias analysis detail, and four **reviewer decision chips** (Justified / Partially justified / Not justified / Escalate to legal). The reviewer can add notes that get appended to the audit record, then resolve the case or escalate it to the legal team via a confirmation modal.
-
-Unresolved escalations block the audit report from being marked complete — this is intentional, reflecting the Article 14 requirement for human oversight before decisions are finalised.
-
----
 
 ### Generate Report
 ![Generate Report](screenshots/report-generation.png)
 
-The audit report screen with a **live preview** that updates as you change the settings. Configuration fields: date range (from / to), company name, responsible officer, and whether to include all decisions or flagged-only.
-
-A live summary bar shows how many decisions match the current filter — clear, flagged, and unresolved counts update in real time. If there are unresolved escalations, a warning banner appears with a direct link to resolve them first.
-
-The preview renders the full report structure: black cover block with company and period metadata, decision summary stats, **EU AI Act compliance mapping** (Art. 13, 14, 26, and Ann. III each marked Met or Partial), bias flag summary, and an officer declaration with signature fields.
-
-The **Download PDF** button opens a print-formatted version of the full report in a new tab — the browser print dialog lets you save it as a PDF. The report includes a complete decision audit log table, flagged decision detail cards with justification text, and the signed declaration.
-
----
-
 ### Import CSV
 ![Import CSV](screenshots/import-csv.png)
 
-A 4-step wizard for batch importing rejection decisions exported from an ATS:
+---
 
-1. **Upload file** — accepts a CSV export from any ATS (Teamtailor, Recruitee, Workable, etc.)
-2. **Map columns** — match the ATS column names to HireTrace fields; required fields are marked
-3. **Run analysis** — Claude API processes all rejection notes in batch, scanning each one for bias indicators; a progress bar tracks the analysis row by row
-4. **Review & import** — results show how many decisions came back clear vs. flagged, with a preview of the first few rows and their status; flagged decisions go directly to the escalation queue on import
+## Version
+
+`v1.0` — May 2026
+
+---
+
+## License
+
+MIT
